@@ -1,8 +1,6 @@
 import scipy as sp
 from scipy import linalg as spl
 
-def pde(paras):
-    return paras[0](**paras[1])
 
 class problem(object):
     """
