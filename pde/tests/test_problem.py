@@ -1,0 +1,95 @@
+import unittest
+import sys
+sys.path.insert(0,'..')
+import scipy as sp
+
+import pde.problems as p
+class TestProblem(unittest.TestCase):
+    def setUp(self):
+        self.testclass=p.problem()
+
+    def test_rhs(self):
+        #should return a 1x1 array
+        s= self.testclass
+        f = s.rhs(sp.array([0.]))
+        self.assertIsInstance(f,float)
+
+    def test_lhs(self):
+        #should return a 1x1 array
+        s= self.testclass
+        f = s.lhs(sp.array([0.]))
+        self.assertIsInstance(f,float)
+
+    def test_f(self):
+        #should return a 1x1 array
+        s= self.testclass
+        f = s.f(sp.array([0.]))
+        self.assertIsInstance(f,sp.ndarray)
+        self.assertEqual((1,1),f.shape)
+
+    def test_df(self):
+        #should return a Dx1 array
+        s = self.testclass
+        g = s.df(sp.array([0.]))
+        self.assertIsInstance(g,sp.ndarray)
+        self.assertEqual((s.D, 1), g.shape)
+
+    def test_d2f(self):
+        #should return a DxD symetric array
+        s = self.testclass
+        h = s.d2f(sp.array([0.]))
+        self.assertIsInstance(h,sp.ndarray)
+        self.assertEqual((s.D, s.D), h.shape)
+        #check symmetry
+        for i in xrange(s.D):
+            for j in xrange(i+1,s.D):
+                self.assertEqual(h[i,j],h[j,i])
+
+    def test_eqsides(self):
+        """
+        check the rhs and lh are equal at sup points
+        :return:
+        """
+        s = self.testclass
+        n = 40
+        X, R, B, Z = s.sf(n)
+        m=X.shape[1]
+        RHS=sp.empty([1,m])
+        LHS=sp.empty([1,m])
+        for i in xrange(m):
+            RHS[0,i]=s.rhs(X[:,i])
+            LHS[0,i]=s.lhs(X[:,i])
+        self.assertTrue(sp.allclose(RHS,LHS))
+
+class Testlinear(TestProblem):
+    def setUp(self):
+        super(Testlinear, self).setUp()
+        self.testclass=p.linear()
+
+    def test_sf(self):
+        s = self.testclass
+        n=40
+        X, R, B, Z = s.sf(n)
+        #n-2 rhs observations
+        self.assertIsInstance(X, sp.ndarray)
+        self.assertEqual((1, n - 2), X.shape)
+        self.assertIsInstance(R, sp.ndarray)
+        self.assertEqual((1, n - 2), R.shape)
+        #2 bc
+        self.assertIsInstance(B, sp.ndarray)
+        self.assertEqual((1, 2), B.shape)
+        self.assertIsInstance(Z, sp.ndarray)
+        self.assertEqual((1, 2), Z.shape)
+
+class Testpoisson1d(Testlinear):
+    def setUp(self):
+        super(Testpoisson1d, self).setUp()
+        self.testclass=p.poisson1d()
+
+class Testpoisson1dquad(Testlinear):
+    def setUp(self):
+        super(Testpoisson1dquad, self).setUp()
+        self.testclass=p.poisson1dquad()
+
+if __name__=="__main__":
+    unittest.main(verbosity=2)
