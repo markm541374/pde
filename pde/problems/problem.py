@@ -1,78 +1,15 @@
 import scipy as sp
 from scipy import linalg as spl
 
+class solution(object):
+    def __init__(self,D,u,du,d2u):
+        self.D = D
+        self.u=u
+        self.du = du
+        self.d2u = d2u
+        self.soln_known=True
 
-class problem(object):
-    """
-    solution and observation generator for a 2nd order pde a*lap u + b dot div u + c*u = rhs(x)
-    """
-    def __init__(self,D=1):
-        self.D=D
-        self.a=0.
-        self.b=sp.zeros([1,D])
-        self.c=1.
-        #true value at x
-        return
-
-    def rhs(self,X):
-        """
-        true value at X
-        :param X:
-        :return:
-        """
-        assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
-        return 0.
-
-    def f(self,X):
-        """
-        true value at X
-        :param X:
-        :return:
-        """
-        return sp.zeros([1,1],dtype=sp.float64)
-
-    def df(self,X):
-        """
-        derivatives at X
-        :param X:
-        :return:
-        """
-        return sp.zeros([self.D, 1])
-
-    def d2f(self,X):
-        """
-        second derivatives at X, ordered by leading diagonal then second. A 3d input would give
-        [dx2, dy2, dz2, dxdy, dydz,  dxdz]
-        :param X:
-        :return:
-        """
-        return sp.zeros([self.D, self.D])
-
-    def sf(self,n):
-        """
-        strong form observations at n locations
-        :param n:
-        :return:
-        """
-        return [sp.zeros([self.D,n]),sp.zeros([1,n]),sp.zeros([0,0]),sp.zeros([0,0])]
-
-    def wf_int(self,n):
-        """
-        weak form observations at n locations interpolated from strong form
-        :param n:
-        :return:
-        """
-        return
-
-    def wf_ex(self,n):
-        """
-        weak form observations at n locations exactly calculated
-        :param n:
-        :return:
-        """
-        return
-
-    def soln(self,X,dv=0):
+    def __call__(self,X,dv=0):
         """
         return the true solution with derivatives at X query set
         :param X:
@@ -96,24 +33,54 @@ class problem(object):
         assert D_==self.D, "query is {}x{} should be {}x*".format(D_,n,self.D)
         R=sp.empty([m,n])
         for i in xrange(n):
-            R[0,i]=self.f(X[:,i])
+            R[0,i]=self.u(X[:,i])
         if d:
             for i in xrange(n):
-                R[1:1+self.D,i]=self.df(X[:,i])
+                R[1:1+self.D,i]=self.du(X[:,i])
         if d2:
             for i in xrange(n):
-                R[1+self.D:m,i]=self.d2f(X[:,i])
+                R[1+self.D:m,i]=self.d2u(X[:,i])
         return R
 
-    def lhs(self,X):
+
+class problem(object):
+    """
+    solution and observation generator for a 2nd order pde a*lap u + b dot div u + c*u = rhs(x)
+    """
+    def __init__(self,D=1):
+        self.D=D
+        self.a=lambda x:0.
+        self.b=lambda x:sp.zeros([1,D])
+        self.c=lambda x:1.
+        #true value at x
+
+        def f(X):
+            return sp.zeros([1, 1])
+        def df(X):
+            return sp.zeros([self.D, 1])
+        def d2f(X):
+            return sp.zeros([self.D, self.D])
+        self.soln = solution(1,f,df,d2f)
+        return
+
+    def rhs(self,X):
         """
-        lhs value at x
+        true value at X
         :param X:
         :return:
         """
         assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
-        R=self.a*self.d2f(X).sum()+self.b.dot(self.df(X))[0,0]+self.c*self.f(X)[0,0]
-        return R
+        return 0.
+
+    def lhs(self,X):
+        """
+        lhs values at x
+        :param X:
+        :return:
+        """
+        assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
+        #R=self.a(X)*self.d2f(X).sum()+self.b(X).dot(self.df(X))[0,0]+self.c(X)*self.f(X)[0,0]
+        return self.a(X), self.b(X), self.c(X)
 
 
 
@@ -152,44 +119,74 @@ class linear(problem):
 
 class poisson1d(linear):
     """
-    1d poisson witht he rhs=0
+    1d poisson with the rhs=0 -pc d2u/dx = rhs
     """
-    def __init__(self, dmleft=-1., dmright=1., bcleft=0., bcright=0.):
+    def __init__(self, dmleft=-1., dmright=1., bcleft=0., bcright=0.,pc=1.):
         super(poisson1d, self).__init__(dmleft, dmright, bcleft, bcright)
-        self.a=-1.
-        self.b = sp.zeros([1, 1])
-        self.c = 0.
+        self.a=lambda x:-pc
+        self.b = lambda x:sp.zeros([1, 1])
+        self.c = lambda x:0.
 
-    def f(self,X):
-        assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
-        x=X[0]
-        u = self.bcleft + (self.bcright-self.bcleft)*(x-self.dmleft)/(self.dmright-self.dmleft)
-        return sp.array([[u]], dtype=sp.float64)
+        def f(X):
+            x=X[0]
+            u = self.bcleft + (self.bcright-self.bcleft)*(x-self.dmleft)/(self.dmright-self.dmleft)
+            return sp.array([[u]], dtype=sp.float64)
 
-    def df(self,X):
-        assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
-        x=X[0]
-        du = (self.bcright-self.bcleft)/(self.dmright-self.dmleft)
-        return sp.array([[du]], dtype=sp.float64)
+        def df(X):
+            x=X[0]
+            du = (self.bcright-self.bcleft)/(self.dmright-self.dmleft)
+            return sp.array([[du]], dtype=sp.float64)
+
+        def d2f(X):
+            return sp.zeros([1,1])
+
+        self.soln = solution(1, f, df, d2f)
+
 
 class poisson1dquad(poisson1d):
     """
     1d poisson witht he rhs=p2*x^2+p1*x+p0
     """
-    def __init__(self, dmleft=-1., dmright=1., bcleft=0., bcright=0.,p2=0.,p1=0.,p0=0.):
-        super(poisson1dquad, self).__init__(dmleft, dmright, bcleft, bcright)
-        a=p2
-        b=p1
-        c=p0
-        self.rhspara=[a,b,c]
-        M = sp.array([[dmleft,1.],[dmright,1.]])
-        x0=dmleft
-        x1=dmright
-        y = sp.array([[-bcleft-a*(x0**4)/12.-b*(x0**3)/6.-c*(x0**2)/2.],[-bcright-a*(x1**4)/12.-b*(x1**3)/6.-c*(x1**2)/2.]])
+    def __init__(self, dmleft=-1., dmright=1., bcleft=0., bcright=0., pc= 1., p2=0.,p1=0.,p0=0.):
+        super(poisson1dquad, self).__init__(dmleft, dmright, bcleft, bcright, pc)
+        self.p2=p2
+        self.p1=p1
+        self.p0=p0
+        #gen the solution
+        self.gensoln()
+
+    def gensoln(self):
+        # diide by pc to normalise
+        pc = -self.a(0.)
+        a=self.p2/pc
+        b=self.p1/pc
+        c=self.p0/pc
+        self.rhspara=[self.p2,self.p1,self.p0]
+        M = sp.array([[self.dmleft,1.],[self.dmright,1.]])
+        x0=self.dmleft
+        x1=self.dmright
+        y = sp.array([[-self.bcleft-a*(x0**4)/12.-b*(x0**3)/6.-c*(x0**2)/2.],[-self.bcright-a*(x1**4)/12.-b*(x1**3)/6.-c*(x1**2)/2.]])
         p = spl.solve(M,y)
         #print [M,y,p]
-        self.sln = sp.array([-a/12.,-b/6.,-c/2.,-p[0,0],-p[1,0]])
-        #print self.sln
+        sln = sp.array([-a/12.,-b/6.,-c/2.,-p[0,0],-p[1,0]])
+
+        def f(X):
+            x = X[0]
+            u = sln[0] * x ** 4 + sln[1] * x ** 3 + sln[2] * x ** 2 + sln[3] * x + sln[4]
+            return sp.array([[u]], dtype=sp.float64)
+
+        def df(X):
+            x = X[0]
+            du = 4. * sln[0] * x ** 3 + 3. * sln[1] * x ** 2 + 2. * sln[2] * x + sln[3]
+            return sp.array([[du]], dtype=sp.float64)
+
+        def d2f(X):
+            x = X[0]
+            du = 12. * sln[0] * x ** 2 + 6. * sln[1] * x + 2. * sln[2]
+            return sp.array([[du]], dtype=sp.float64)
+
+        self.soln = solution(1, f, df, d2f)
+
 
     def rhs(self,X):
         """
@@ -202,20 +199,3 @@ class poisson1dquad(poisson1d):
         return self.rhspara[0]*x**2 + self.rhspara[1]*x + self.rhspara[2]
 
 
-    def f(self,X):
-        assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
-        x=X[0]
-        u = self.sln[0]*x**4 + self.sln[1]*x**3 + self.sln[2]*x**2 + self.sln[3]*x + self.sln[4]
-        return sp.array([[u]], dtype=sp.float64)
-
-    def df(self,X):
-        assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
-        x=X[0]
-        du = 4.*self.sln[0]*x**3 + 3.*self.sln[1]*x**2 + 2.*self.sln[2]*x + self.sln[3]
-        return sp.array([[du]], dtype=sp.float64)
-
-    def d2f(self,X):
-        assert X.shape == (self.D,), "query is {} should be ({},)".format(X.shape, self.D)
-        x=X[0]
-        du = 12.*self.sln[0]*x**2 + 6.*self.sln[1]*x + 2.*self.sln[2]
-        return sp.array([[du]], dtype=sp.float64)
