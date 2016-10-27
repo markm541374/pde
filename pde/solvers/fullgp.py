@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class poisson_1d_solver(solver.linearsolver):
+class poisson_1d_solver(solver.linearsolver_var):
     def __init__(self,problem):
         super(poisson_1d_solver, self).__init__(problem)
 
@@ -55,6 +55,8 @@ class poisson_1d_solver(solver.linearsolver):
 
         C = spl.cho_factor(K)
         KiY = spl.cho_solve(C,Y)
+        self.solvetime = timer() - t0
+        logger.info('solvetime = {}'.format(self.solvetime))
         def u(x,var=False):
             if not var:
                 u=0.
@@ -115,19 +117,5 @@ class poisson_1d_solver(solver.linearsolver):
         self.soln = solution_var(self.D, u, du, d2u)
         return
 
-    def plot(self,axis,n=400,col='r'):
-        assert(len(axis)>=3)
-        xaxis = sp.linspace(self.dmleft,self.dmright,n).reshape([1,n])
-        F,V = self.soln(xaxis,dv=2,var=True)
-        #print V
-        axis[0].plot(xaxis[0,:],F[0,:],col)
-        axis[0].fill_between(xaxis[0, :], F[0, :] - 2. * sp.sqrt(V[0, :]), F[0, :] + 2. * sp.sqrt(V[0,:]),
-                             facecolor=col,edgecolor=col,alpha=0.1)
-        axis[1].plot(xaxis[0,:],F[1,:],col)
-        axis[1].fill_between(xaxis[0, :], F[1, :] - 2. * sp.sqrt(V[1, :]), F[1, :] + 2. * sp.sqrt(V[1, :]),
-                             facecolor=col, edgecolor=col, alpha=0.1)
-        axis[2].plot(xaxis[0,:],F[2,:],col)
-        axis[2].fill_between(xaxis[0, :], F[2, :] - 2. * sp.sqrt(V[2, :]), F[2, :] + 2. * sp.sqrt(V[2, :]),
-                             facecolor=col, edgecolor=col, alpha=0.1)
-        return
+
 

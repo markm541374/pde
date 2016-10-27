@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class poisson_1d_solver(solver.linearsolver):
+class poisson_1d_solver(solver.linearsolver_var):
     """
     this exploits the regularity of the space
     """
@@ -112,7 +112,8 @@ class poisson_1d_solver(solver.linearsolver):
 
         Ac, R, Q, V = buildmats(k)
         KiY = Ksolve(Ac,R,Q,V,Y)
-
+        self.solvetime = timer() - t0
+        logger.info('solvetime = {}'.format(self.solvetime))
         def u(x,var=False):
             if not var:
                 u=0.
@@ -128,7 +129,7 @@ class poisson_1d_solver(solver.linearsolver):
                 Kxy[n,0]=k(x,self.dmleft)
                 Kxy[n+1,0] =k(x, self.dmright)
                 u = Kxy.T.dot(KiY)
-                v = k(x,x)-Kxy.T.dot(spl.cho_solve(C,Kxy))
+                v = k(x,x)-Kxy.T.dot(Ksolve(Ac,R,Q,V,Kxy))
                 return sp.array([[u]]),sp.array([[v]])
 
 
@@ -147,7 +148,7 @@ class poisson_1d_solver(solver.linearsolver):
                 Kxy[n,0]=-k.d1(x,self.dmleft)
                 Kxy[n+1,0] =-k.d1(x, self.dmright)
                 u = Kxy.T.dot(KiY)
-                v = -k.d2(x,x)-Kxy.T.dot(spl.cho_solve(C,Kxy))
+                v = -k.d2(x,x)-Kxy.T.dot(Ksolve(Ac,R,Q,V,Kxy))
                 return sp.array([[u]]),sp.array([[v]])
 
         def d2u(x,var=False):
@@ -165,9 +166,9 @@ class poisson_1d_solver(solver.linearsolver):
                 Kxy[n,0]=k.d2(x,self.dmleft)
                 Kxy[n+1,0] =k.d2(x, self.dmright)
                 u = Kxy.T.dot(KiY)
-                v = k.d4(x,x)-Kxy.T.dot(spl.cho_solve(C,Kxy))
-                print k.d4(x,x),Kxy.T.dot(spl.cho_solve(C,Kxy))
-                print Kxy
+                v = k.d4(x,x)-Kxy.T.dot(Ksolve(Ac,R,Q,V,Kxy))
+                #print k.d4(x,x),Kxy.T.dot(spl.cho_solve(C,Kxy))
+                #print Kxy
                 return sp.array([[u]]),sp.array([[v]])
 
         self.soln = solution_var(self.D, u, du, d2u)

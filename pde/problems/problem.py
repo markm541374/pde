@@ -141,7 +141,7 @@ class linear(problem):
         self.bcleft=bcleft
         self.bcright=bcright
 
-    def plot(self,axis,n=100,col='b'):
+    def plot(self,axis,n=400,col='b'):
         assert(len(axis)>=3)
         xaxis = sp.linspace(self.dmleft,self.dmright,n).reshape([1,n])
         F = self.soln(xaxis,dv=2)

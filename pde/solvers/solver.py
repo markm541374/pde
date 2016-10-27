@@ -61,3 +61,20 @@ class linearsolver(solver):
         maxs = F.max(axis=1)
         logger.info('{} errors are mean^2 {} max^2 {}'.format(str(self.__class__),means,maxs))
         return means,maxs
+
+class linearsolver_var(linearsolver):
+    def plot(self,axis,n=400,col='r'):
+        assert(len(axis)>=3)
+        xaxis = sp.linspace(self.dmleft,self.dmright,n).reshape([1,n])
+        F,V = self.soln(xaxis,dv=2,var=True)
+        #print V
+        axis[0].plot(xaxis[0,:],F[0,:],col)
+        axis[0].fill_between(xaxis[0, :], F[0, :] - 2. * sp.sqrt(V[0, :]), F[0, :] + 2. * sp.sqrt(V[0,:]),
+                             facecolor=col,edgecolor=col,alpha=0.1)
+        axis[1].plot(xaxis[0,:],F[1,:],col)
+        axis[1].fill_between(xaxis[0, :], F[1, :] - 2. * sp.sqrt(V[1, :]), F[1, :] + 2. * sp.sqrt(V[1, :]),
+                             facecolor=col, edgecolor=col, alpha=0.1)
+        axis[2].plot(xaxis[0,:],F[2,:],col)
+        axis[2].fill_between(xaxis[0, :], F[2, :] - 2. * sp.sqrt(V[2, :]), F[2, :] + 2. * sp.sqrt(V[2, :]),
+                             facecolor=col, edgecolor=col, alpha=0.1)
+        return
