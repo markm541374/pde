@@ -42,6 +42,53 @@ class solution(object):
                 R[1+self.D:m,i]=self.d2u(X[:,i])
         return R
 
+class solution_var(solution):
+    def __call__(self,X,dv=0,var=False):
+        if dv==0:
+            d,d2=False,False
+        elif dv==1:
+            d,d2 =True,False
+
+        elif dv==2:
+            d,d2=True,True
+        else:
+            raise NotImplementedError("dv={}! derivative higher than 2nd not implemeted".format(dv))
+
+
+        m=1+d*self.D+d2*(self.D*(self.D+1)/2)
+        [D_,n]=X.shape
+        assert D_==self.D, "query is {}x{} should be {}x*".format(D_,n,self.D)
+        if not var:
+            R=sp.empty([m,n])
+            for i in xrange(n):
+                R[0,i]=self.u(X[:,i])
+            if d:
+                for i in xrange(n):
+                    R[1:1+self.D,i]=self.du(X[:,i])
+            if d2:
+                for i in xrange(n):
+                    R[1+self.D:m,i]=self.d2u(X[:,i])
+            return R
+        else:
+            R = sp.empty([m, n])
+            V = sp.empty([m, n])
+            for i in xrange(n):
+                u,v = self.u(X[:, i],var=True)
+                R[0, i] = u
+                V[0, i] = v
+            if d:
+                for i in xrange(n):
+                    u,v = self.du(X[:, i],var=True)
+                    R[1:1 + self.D, i] = u
+                    V[1:1 + self.D, i] = v
+
+            if d2:
+                for i in xrange(n):
+                    u,v = self.d2u(X[:, i],var=True)
+                    R[1 + self.D:m, i] = u
+                    V[1 + self.D:m, i] = v
+            return R,V
+
 
 class problem(object):
     """

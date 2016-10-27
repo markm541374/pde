@@ -40,19 +40,24 @@ class linearsolver(solver):
         axis[2].plot(xaxis[0,:],F[2,:],col)
         return
 
-    def ploterr(self,axis,n=400,col='r'):
+    def ploterr(self,axis,n=400,col='r',logabs=False):
         assert(len(axis)>=3)
         xaxis = sp.linspace(self.dmleft,self.dmright,n).reshape([1,n])
         F = self.soln(xaxis,dv=2)-self.problem.soln(xaxis,dv=2)
-        axis[0].plot(xaxis[0,:],F[0,:],col)
-        axis[1].plot(xaxis[0,:],F[1,:],col)
-        axis[2].plot(xaxis[0,:],F[2,:],col)
+        if not logabs:
+            axis[0].plot(xaxis[0,:],F[0,:],col)
+            axis[1].plot(xaxis[0,:],F[1,:],col)
+            axis[2].plot(xaxis[0,:],F[2,:],col)
+        else:
+            axis[0].semilogy(xaxis[0, :], abs(F[0, :]), col)
+            axis[1].semilogy(xaxis[0, :], abs(F[1, :]), col)
+            axis[2].semilogy(xaxis[0, :], abs(F[2, :]), col)
         return
 
-    def errstats(self,n=10000):
+    def errstats(self,n=1000):
         xaxis = sp.random.uniform(self.dmleft, self.dmright, n).reshape([1, n])
         F = (self.soln(xaxis, dv=2) - self.problem.soln(xaxis, dv=2))**2
         means = F.sum(axis=1)/n
         maxs = F.max(axis=1)
-        logger.info('errors are mean^2 {} max^2 {}'.format(means,maxs))
+        logger.info('{} errors are mean^2 {} max^2 {}'.format(str(self.__class__),means,maxs))
         return means,maxs
