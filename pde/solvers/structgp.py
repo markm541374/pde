@@ -68,55 +68,39 @@ class poisson_1d_solver(solver.linearsolver):
 
         k = sqk(1.0011159368491009, 0.7256396362752614)
 
-        Ac = sp.empty([1,n])
-        B = sp.empty([n, 2])
-        D = sp.empty([2, 2])
-        R = sp.empty([n, 2])
-        Q = sp.empty([2,2])
-        V = sp.empty([n,2])
-
-        def Ksolve(Z):
-            W = sp.empty(Z.shape)
-            print W
-            W[:n, :] = sp.linalg.solve_toeplitz(Ac, Z[:n, :]) + -R.dot(V.T.dot(Z[:n, :])) + V.dot(Z[n:, :])
-            print W
-            print 'X'
-            print V.T.dot(Z[:n, :])
-            print Q
-            print sp.linalg.solve(Q, Z[n:, :])
-            W[n:, :] = V.T.dot(Z[:n, :]) + sp.linalg.solve(Q, Z[n:, :])
-            print W
-            return W
-        def llk(x):
-            A = 10 ** x[0]
-            l = 10 ** x[1]
-            print (A,l)
-            k = sqk(A, l)
+        def buildmats(k):
+            Ac = sp.empty([1, n])
+            B = sp.empty([n, 2])
+            D = sp.empty([2, 2])
             for i in xrange(n):
                 Ac[0,i]=k.d4(X[0, 0], X[0, i])
             Ac[0,0]+=1e-9
-
-
             for i in xrange(n):
                 B[i, 0] = k.d2(self.dmleft, X[0,i])
                 B[i, 1] = k.d2(self.dmright, X[0,i])
-
 
             D[0,0]=k(self.dmleft, self.dmleft)+1e-9
             D[1,1]=k(self.dmright, self.dmright)+1e-9
             D[1,0]=D[0,1]=k(self.dmright, self.dmleft)
 
-
             R = sp.linalg.solve_toeplitz(Ac,B)
             Q = D-B.T.dot(R)
+
             V = -sp.linalg.solve(Q,R.T,sym_pos=True).T
+            return Ac,R,Q,V
 
-            print V.T.dot(Y[:n, :])
-            print sp.linalg.solve(Q, Y[n:, :])
+        def Ksolve(Ac,R,Q,V,Z):
+            W = sp.empty(Z.shape)
+            W[:n, :] = sp.linalg.solve_toeplitz(Ac, Z[:n, :]) + -R.dot(V.T.dot(Z[:n, :])) + V.dot(Z[n:, :])
+            W[n:, :] = V.T.dot(Z[:n, :]) + sp.linalg.solve(Q, Z[n:, :])
+            return W
 
-            print Ksolve(Y)
-            raise
-            lk = -0.5 * Y.T.dot(Ksolve(Y)) - 0.5 * slogdet(spl.toeplitz(Ac))[1]*slogdet(Q)[1]
+        def llk(x):
+            A = 10 ** x[0]
+            l = 10 ** x[1]
+            k = sqk(A, l)
+            Ac, R, Q, V = buildmats(k)
+            lk = -0.5 * Y.T.dot(Ksolve(Ac, R, Q, V ,Y)) - 0.5 * (slogdet(spl.toeplitz(Ac))[1]+slogdet(Q)[1])
 
             pr = -0.5 * x[0] ** 2 - 0.5 * x[1] ** 2
             return -lk - pr
@@ -125,10 +109,9 @@ class poisson_1d_solver(solver.linearsolver):
         A, l = [10 ** i for i in opt.x]
         logger.info('map hyperparameters {} under lognormal(0,1) prior'.format((A, l)))
         k = sqk(A, l)
-        mapllk = llk(opt.x)
 
-        KiY = Ksolve(Y)
-        print KiY
+        Ac, R, Q, V = buildmats(k)
+        KiY = Ksolve(Ac,R,Q,V,Y)
 
         def u(x,var=False):
             if not var:

@@ -43,7 +43,7 @@ class poisson_1d_solver(solver.linearsolver):
             K[n, n] = k(self.dmleft, self.dmleft)+1e-9
             K[n + 1, n + 1] = k(self.dmright, self.dmright)+1e-9
             K[n + 1, n] = K[n, n + 1] = k(self.dmleft, self.dmright)
-            lk = -0.5*Y.T.dot(spl.cho_solve(spl.cho_factor(K),Y))-0.5*slogdet(K)[1]-0.5*(n+2)*sp.log(2*sp.pi)
+            lk = -0.5*Y.T.dot(spl.cho_solve(spl.cho_factor(K),Y))-0.5*slogdet(K)[1]#-0.5*(n+2)*sp.log(2*sp.pi)
             pr = -0.5*x[0]**2 - 0.5*x[1]**2
             return -lk-pr
         opt = spo.minimize(llk,[0.,sp.log10(0.4)],method='Nelder-Mead',options={'xatol':0.1})
@@ -55,7 +55,6 @@ class poisson_1d_solver(solver.linearsolver):
 
         C = spl.cho_factor(K)
         KiY = spl.cho_solve(C,Y)
-        print KiY
         def u(x,var=False):
             if not var:
                 u=0.
